@@ -235,7 +235,8 @@ export async function POST(req: Request) {
     console.error("orders POST error:", error)
     try {
       const stamp = new Date().toISOString()
-      await appendFile(new URL("../../../../logs/orders-error.log", import.meta.url), `${stamp} - ${String(error)}\n${error?.stack ?? ''}\n\n`)
+      console.error("Order error:", error)
+
     } catch {}
     return NextResponse.json(
       { error: "Unable to place order right now. Please try again." },
