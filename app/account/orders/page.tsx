@@ -58,7 +58,12 @@ export default function OrdersPage() {
         }
         setOrders(data?.orders ?? [])
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Unable to load orders")
+        // Only show a limited set of client-friendly errors; otherwise show a generic message
+        const allowed = [
+          "Unable to load orders",
+        ]
+        const msg = err instanceof Error && allowed.includes(err.message) ? err.message : "Unable to load orders"
+        setError(msg)
       } finally {
         setLoading(false)
       }
@@ -128,8 +133,19 @@ export default function OrdersPage() {
               },
         ),
       )
+      // clear draft after successful submit
+      setDrafts((prev) => {
+        const copy = { ...prev }
+        delete copy[key]
+        return copy
+      })
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to submit review")
+      const allowedClient = [
+        "Please select a rating between 1 and 5.",
+        "Please add a short review comment.",
+      ]
+      const msg = err instanceof Error && allowedClient.includes(err.message) ? err.message : "Unable to submit review"
+      setError(msg)
     } finally {
       setSubmittingKey(null)
     }
@@ -168,7 +184,13 @@ export default function OrdersPage() {
                   Order #{order.orderNumber || order.id} | {formatPaise(order.totalPaise)}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Delivered on {new Date(order.createdAt).toLocaleDateString()}
+                  Delivered on {
+                    // guard against invalid dates
+                    (() => {
+                      const d = new Date(order.createdAt)
+                      return isNaN(d.getTime()) ? "Unknown date" : d.toLocaleDateString()
+                    })()
+                  }
                 </p>
               </div>
 
@@ -176,7 +198,8 @@ export default function OrdersPage() {
                 {order.items.map((item) => {
                   const key = `${order.id}:${item.id}`
                   const draft = drafts[key] ?? { rating: "", comment: "" }
-                  const reviewed = typeof item.reviewRating === "number" && !!item.reviewComment
+                  // consider an item reviewed when a numeric rating exists (comment may be optional)
+                  const reviewed = typeof item.reviewRating === "number" && Number.isFinite(item.reviewRating)
 
                   return (
                     <div key={item.id} className="rounded-md border border-border p-3">

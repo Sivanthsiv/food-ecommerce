@@ -44,8 +44,8 @@ If it fails, check:
 
 1. Atlas username/password are correct.
 2. If you use Option A above the app will URL-encode `MONGO_DB_PASSWORD` for you when it
-	builds the full connection string. If you use Option B you must URL-encode any
-	special characters in the password yourself.
+    builds the full connection string. If you use Option B you must URL-encode any
+    special characters in the password yourself.
 3. Atlas Network Access: do NOT leave `0.0.0.0/0` open in production. `0.0.0.0/0` allows
 	connections from any IP and is insecure — only use it temporarily for initial testing.
 	Safer alternatives: whitelist specific client IPs, use CIDR-restricted ranges, VPN/private

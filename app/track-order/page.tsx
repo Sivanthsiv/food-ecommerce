@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { Suspense, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Header } from "@/components/layout/header"
@@ -34,7 +34,7 @@ function formatPaise(paise: number) {
   return `Rs ${(paise / 100).toFixed(2)}`
 }
 
-export default function TrackOrderPage() {
+function TrackOrderContent() {
   const searchParams = useSearchParams()
   const initialOrderId = searchParams.get("orderId") ?? ""
   const [orderId, setOrderId] = useState(initialOrderId)
@@ -181,5 +181,13 @@ export default function TrackOrderPage() {
       </main>
       <Footer />
     </div>
+  )
+}
+
+export default function TrackOrderPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <TrackOrderContent />
+    </Suspense>
   )
 }

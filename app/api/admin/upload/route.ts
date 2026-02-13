@@ -74,7 +74,6 @@ export async function POST(req: Request) {
     const targetPath = path.join(targetDir, filename)
 
     await mkdir(targetDir, { recursive: true })
-    const bytes = await file.arrayBuffer()
     await writeFile(targetPath, Buffer.from(bytes))
 
     return NextResponse.json({ imageUrl: relativePath })

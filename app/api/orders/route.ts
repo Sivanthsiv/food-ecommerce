@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server"
-import { appendFile } from "fs/promises"
 import { createHash, randomInt } from "crypto"
 import { z } from "zod"
 import { prisma } from "@/lib/db"
@@ -233,11 +232,6 @@ export async function POST(req: Request) {
     })
   } catch (error) {
     console.error("orders POST error:", error)
-    try {
-      const stamp = new Date().toISOString()
-      console.error("Order error:", error)
-
-    } catch {}
     return NextResponse.json(
       { error: "Unable to place order right now. Please try again." },
       { status: 500 },
