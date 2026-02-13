@@ -9,6 +9,15 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import {
+  BadgeCheck,
+  Clock3,
+  IndianRupee,
+  PackageCheck,
+  Search,
+  Truck,
+  XCircle,
+} from "lucide-react"
 
 type Product = {
   id: string
@@ -30,11 +39,23 @@ type OrderItem = {
   name: string
   quantity: number
   pricePaise: number
+  reviewRating?: number | null
+  reviewComment?: string | null
+  reviewCreatedAt?: string | null
 }
 
 type Order = {
   id: string
+  orderNumber?: string | null
   status: string
+  paymentStatus: "pending_review" | "approved" | "rejected"
+  paymentMethod: string | null
+  paymentUtr: string | null
+  paymentUpiId: string | null
+  paymentScreenshotUrl: string | null
+  paymentSubmittedAt: string | null
+  paymentVerifiedAt: string | null
+  paymentRemark: string | null
   totalPaise: number
   customerName: string
   customerEmail: string
@@ -79,6 +100,16 @@ const emptyForm: ProductForm = {
   shelfLife: "",
 }
 
+const fulfillmentStages = [
+  "confirmed",
+  "packed",
+  "shipped",
+  "out_for_delivery",
+  "delivered",
+] as const
+const acceptedStatusSet = new Set<string>(["approved", "paid", ...fulfillmentStages])
+const cancelledStatusSet = new Set<string>(["rejected", "payment_rejected", "cancelled"])
+
 function toSlug(value: string) {
   return value
     .toLowerCase()
@@ -91,6 +122,35 @@ function formatPaise(paise: number) {
   return `Rs ${(paise / 100).toFixed(2)}`
 }
 
+function normalizeStatus(value: string | null | undefined) {
+  return (value ?? "").toString().trim().toLowerCase()
+}
+
+function isSameLocalDay(input: string) {
+  const date = new Date(input)
+  if (Number.isNaN(date.getTime())) return false
+  const now = new Date()
+  return (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  )
+}
+
+function statusChipClass(status: string) {
+  const normalized = normalizeStatus(status)
+  if (normalized === "delivered") {
+    return "bg-emerald-100 text-emerald-800 border-emerald-200"
+  }
+  if (normalized === "payment_rejected" || normalized === "rejected" || normalized === "cancelled") {
+    return "bg-rose-100 text-rose-800 border-rose-200"
+  }
+  if (normalized === "pending_review" || normalized === "awaiting_payment_approval") {
+    return "bg-amber-100 text-amber-800 border-amber-200"
+  }
+  return "bg-sky-100 text-sky-800 border-sky-200"
+}
+
 export default function AdminPage() {
   const router = useRouter()
   const [checkingAccess, setCheckingAccess] = useState(true)
@@ -99,10 +159,11 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null)
   const [products, setProducts] = useState<Product[]>([])
   const [orders, setOrders] = useState<Order[]>([])
+  const [orderSearch, setOrderSearch] = useState("")
   const [editingProductId, setEditingProductId] = useState<string | null>(null)
   const [form, setForm] = useState<ProductForm>(emptyForm)
   const [uploadingImage, setUploadingImage] = useState(false)
-  const [orderStatusDraft, setOrderStatusDraft] = useState<Record<string, string>>({})
+  const [showScrollTop, setShowScrollTop] = useState(false)
 
   useEffect(() => {
     const checkAccess = async () => {
@@ -123,9 +184,134 @@ export default function AdminPage() {
     void checkAccess()
   }, [router])
 
+  useEffect(() => {
+    const onScroll = () => {
+      setShowScrollTop(window.scrollY > 280)
+    }
+    onScroll()
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => window.removeEventListener("scroll", onScroll)
+  }, [])
+
   const sortedProducts = useMemo(
     () => [...products].sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
     [products]
+  )
+  const pendingOrders = useMemo(
+    () =>
+      orders.filter((order) => {
+        const paymentStatus = normalizeStatus(order.paymentStatus)
+        const orderStatus = normalizeStatus(order.status)
+        return !acceptedStatusSet.has(paymentStatus) && !acceptedStatusSet.has(orderStatus) && !cancelledStatusSet.has(paymentStatus) && !cancelledStatusSet.has(orderStatus)
+      }),
+    [orders],
+  )
+  const acceptedOrders = useMemo(
+    () =>
+      orders.filter((order) => {
+        const paymentStatus = normalizeStatus(order.paymentStatus)
+        const orderStatus = normalizeStatus(order.status)
+        return acceptedStatusSet.has(paymentStatus) || acceptedStatusSet.has(orderStatus)
+      }),
+    [orders],
+  )
+  const cancelledOrders = useMemo(
+    () =>
+      orders.filter((order) => {
+        const paymentStatus = normalizeStatus(order.paymentStatus)
+        const orderStatus = normalizeStatus(order.status)
+        return cancelledStatusSet.has(paymentStatus) || cancelledStatusSet.has(orderStatus)
+      }),
+    [orders],
+  )
+  const ongoingOrders = useMemo(
+    () => acceptedOrders.filter((order) => normalizeStatus(order.status) !== "delivered"),
+    [acceptedOrders],
+  )
+  const deliveredOrders = useMemo(
+    () => acceptedOrders.filter((order) => normalizeStatus(order.status) === "delivered"),
+    [acceptedOrders],
+  )
+  const filteredPendingOrders = useMemo(
+    () =>
+      pendingOrders.filter((order) => {
+        const q = orderSearch.trim().toLowerCase()
+        if (!q) return true
+        return (
+          order.id.toLowerCase().includes(q) ||
+          (order.orderNumber ?? "").toLowerCase().includes(q) ||
+          order.customerName.toLowerCase().includes(q) ||
+          order.customerEmail.toLowerCase().includes(q)
+        )
+      }),
+    [pendingOrders, orderSearch],
+  )
+  const filteredAcceptedOrders = useMemo(
+    () =>
+      acceptedOrders.filter((order) => {
+        const q = orderSearch.trim().toLowerCase()
+        if (!q) return true
+        return (
+          order.id.toLowerCase().includes(q) ||
+          (order.orderNumber ?? "").toLowerCase().includes(q) ||
+          order.customerName.toLowerCase().includes(q) ||
+          order.customerEmail.toLowerCase().includes(q)
+        )
+      }),
+    [acceptedOrders, orderSearch],
+  )
+  const filteredOngoingOrders = useMemo(
+    () =>
+      ongoingOrders.filter((order) => {
+        const q = orderSearch.trim().toLowerCase()
+        if (!q) return true
+        return (
+          order.id.toLowerCase().includes(q) ||
+          (order.orderNumber ?? "").toLowerCase().includes(q) ||
+          order.customerName.toLowerCase().includes(q) ||
+          order.customerEmail.toLowerCase().includes(q)
+        )
+      }),
+    [ongoingOrders, orderSearch],
+  )
+  const filteredDeliveredOrders = useMemo(
+    () =>
+      deliveredOrders.filter((order) => {
+        const q = orderSearch.trim().toLowerCase()
+        if (!q) return true
+        return (
+          order.id.toLowerCase().includes(q) ||
+          (order.orderNumber ?? "").toLowerCase().includes(q) ||
+          order.customerName.toLowerCase().includes(q) ||
+          order.customerEmail.toLowerCase().includes(q)
+        )
+      }),
+    [deliveredOrders, orderSearch],
+  )
+  const filteredCancelledOrders = useMemo(
+    () =>
+      cancelledOrders.filter((order) => {
+        const q = orderSearch.trim().toLowerCase()
+        if (!q) return true
+        return (
+          order.id.toLowerCase().includes(q) ||
+          (order.orderNumber ?? "").toLowerCase().includes(q) ||
+          order.customerName.toLowerCase().includes(q) ||
+          order.customerEmail.toLowerCase().includes(q)
+        )
+      }),
+    [cancelledOrders, orderSearch],
+  )
+  const totalEarningsPaise = useMemo(
+    () => acceptedOrders.reduce((sum, order) => sum + (order.totalPaise || 0), 0),
+    [acceptedOrders],
+  )
+  const todayEarningsPaise = useMemo(
+    () =>
+      acceptedOrders
+        .filter((order) => isSameLocalDay(order.createdAt))
+        .reduce((sum, order) => sum + (order.totalPaise || 0), 0),
+    [acceptedOrders],
   )
 
   async function loadData() {
@@ -265,10 +451,7 @@ export default function AdminPage() {
     }
   }
 
-  async function updateOrderStatus(orderId: string) {
-    const status = orderStatusDraft[orderId]
-    if (!status) return
-
+  async function updateOrderStatus(orderId: string, status: string) {
     setError(null)
     try {
       const res = await fetch(`/api/admin/orders/${orderId}`, {
@@ -284,6 +467,30 @@ export default function AdminPage() {
       await loadData()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to update order status")
+    }
+  }
+
+  async function reviewPayment(orderId: string, paymentStatus: "approved" | "rejected") {
+    setError(null)
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ paymentStatus }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        throw new Error(data?.error || "Unable to review payment")
+      }
+      const data = await res.json().catch(() => null)
+      const updated = data?.order as Order | undefined
+      if (updated?.id) {
+        setOrders((prev) => prev.map((order) => (order.id === updated.id ? updated : order)))
+      }
+      await loadData()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to review payment")
     }
   }
 
@@ -317,19 +524,264 @@ export default function AdminPage() {
     }
   }
 
+  function scrollToSection(sectionId: string) {
+    const element = document.getElementById(sectionId)
+    if (!element) return
+    element.scrollIntoView({ behavior: "smooth", block: "start" })
+    if (window.location.hash !== `#${sectionId}`) {
+      window.history.replaceState(null, "", `#${sectionId}`)
+    }
+  }
+
+  function scrollToTop() {
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  function renderOrderCard(order: Order, options: { allowReview: boolean; allowTracking: boolean }) {
+    return (
+      <article className="rounded-lg border border-border p-4" key={order.id}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="font-medium text-foreground">
+              Order #{order.orderNumber || order.id} | {formatPaise(order.totalPaise)}
+            </p>
+            {order.orderNumber && <p className="text-xs text-muted-foreground">ID: {order.id}</p>}
+            <p className="text-sm text-muted-foreground">{new Date(order.createdAt).toLocaleString()}</p>
+          </div>
+          <span
+            className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${statusChipClass(
+              order.status,
+            )}`}
+          >
+            {order.status.replaceAll("_", " ")}
+          </span>
+        </div>
+
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 items-stretch">
+          <div className="rounded-md border border-border p-3 text-sm h-full">
+            <p className="font-medium text-foreground">Customer</p>
+            <p>{order.customerName}</p>
+            <p>{order.customerEmail}</p>
+            <p>{order.customerPhone}</p>
+            {order.user && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Account: {order.user.name || "User"} ({order.user.email})
+              </p>
+            )}
+          </div>
+          <div className="rounded-md border border-border p-3 text-sm h-full">
+            <p className="font-medium text-foreground">Delivery Address</p>
+            <p>{order.addressLine1}</p>
+            {order.addressLine2 && <p>{order.addressLine2}</p>}
+            <p>
+              {order.city}, {order.state} {order.postalCode}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-3 grid gap-3 lg:grid-cols-5 items-stretch">
+          <div className="rounded-md border border-border p-3 text-sm lg:col-span-2 h-full">
+            <p className="font-medium text-foreground">Payment Verification</p>
+            <p className="mt-1 text-muted-foreground">
+              Method: {(order.paymentMethod ?? "NA").toUpperCase()} | Status:{" "}
+              <span className="font-medium text-foreground">{order.paymentStatus}</span>
+            </p>
+            <p className="text-muted-foreground">Payer UPI: {order.paymentUpiId ?? "Not submitted"}</p>
+            <p className="text-muted-foreground">UTR: {order.paymentUtr ?? "Not submitted"}</p>
+            <p className="text-muted-foreground">
+              Submitted:{" "}
+              {order.paymentSubmittedAt
+                ? new Date(order.paymentSubmittedAt).toLocaleString()
+                : "Not submitted"}
+            </p>
+            {order.paymentVerifiedAt && (
+              <p className="text-muted-foreground">
+                Verified: {new Date(order.paymentVerifiedAt).toLocaleString()}
+              </p>
+            )}
+            {order.paymentRemark && <p className="text-muted-foreground">Remark: {order.paymentRemark}</p>}
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              {order.paymentScreenshotUrl ? (
+                <a
+                  href={order.paymentScreenshotUrl}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="text-primary underline"
+                >
+                  View screenshot
+                </a>
+              ) : (
+                <span className="text-muted-foreground">No screenshot</span>
+              )}
+
+              {options.allowReview && (
+                <>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => void reviewPayment(order.id, "approved")}
+                    disabled={order.paymentStatus === "approved"}
+                  >
+                    Approve Payment
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => void reviewPayment(order.id, "rejected")}
+                    disabled={order.paymentStatus === "rejected"}
+                  >
+                    Reject Payment
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+          <div className="rounded-md border border-border p-3 lg:col-span-3 h-full">
+            <p className="font-medium text-foreground">Items Ordered</p>
+            <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+              {order.items.map((item) => (
+                <li key={item.id}>
+                  {item.name} | Qty {item.quantity} | {formatPaise(item.pricePaise)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {options.allowTracking && (
+          <div className="mt-3 rounded-md border border-border p-3 text-sm">
+            <p className="font-medium text-foreground">Tracking Status</p>
+            <p className="mt-1 text-muted-foreground">
+              Update delivery journey: confirmed, packed, shipped, out for delivery, delivered
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {fulfillmentStages.map((stage) => (
+                <Button
+                  key={stage}
+                  type="button"
+                  size="sm"
+                  variant={order.status === stage ? "default" : "outline"}
+                  onClick={() => void updateOrderStatus(order.id, stage)}
+                >
+                  {stage.replaceAll("_", " ")}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+
+      </article>
+    )
+  }
+
   if (checkingAccess) {
     return <div className="p-10 text-center text-muted-foreground">Checking admin access...</div>
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-b from-orange-50/60 via-background to-background">
       <Header />
       <main className="mx-auto w-full max-w-7xl space-y-8 px-4 py-8 lg:px-8">
-        <section className="rounded-lg border border-border bg-card p-6">
-          <h1 className="text-2xl font-semibold text-foreground">Admin Dashboard</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
+        <section className="rounded-2xl border border-orange-200/70 bg-card p-6 shadow-sm">
+          <h1 className="text-3xl font-semibold text-foreground">Admin Dashboard</h1>
+          <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
             Manage products, update catalog details, and track all customer orders.
           </p>
+        </section>
+
+        <section id="orders-overview" className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <h2 className="text-xl font-semibold text-foreground">Orders Overview</h2>
+          <div className="mt-4">
+            <div className="relative max-w-md">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={orderSearch}
+                onChange={(event) => setOrderSearch(event.target.value)}
+                placeholder="Search by order id, customer name, email"
+                className="pl-9"
+              />
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
+            <button
+              type="button"
+              onClick={() => scrollToSection("orders-overview")}
+              className="rounded-xl border border-border bg-background p-4 text-left transition hover:border-primary/40 hover:shadow-sm"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Today Earnings</p>
+                <IndianRupee className="h-4 w-4 text-emerald-600" />
+              </div>
+              <p className="mt-1 text-xl font-semibold text-foreground">{formatPaise(todayEarningsPaise)}</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection("orders-overview")}
+              className="rounded-xl border border-border bg-background p-4 text-left transition hover:border-primary/40 hover:shadow-sm"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Total Earnings</p>
+                <IndianRupee className="h-4 w-4 text-emerald-600" />
+              </div>
+              <p className="mt-1 text-xl font-semibold text-foreground">{formatPaise(totalEarningsPaise)}</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection("ongoing-orders")}
+              className="rounded-xl border border-border bg-background p-4 text-left transition hover:border-primary/40 hover:shadow-sm"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Accepted Orders</p>
+                <BadgeCheck className="h-4 w-4 text-sky-600" />
+              </div>
+              <p className="mt-1 text-xl font-semibold text-foreground">{acceptedOrders.length}</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection("pending-orders")}
+              className="rounded-xl border border-border bg-background p-4 text-left transition hover:border-primary/40 hover:shadow-sm"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Pending Orders</p>
+                <Clock3 className="h-4 w-4 text-amber-600" />
+              </div>
+              <p className="mt-1 text-xl font-semibold text-foreground">{pendingOrders.length}</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection("delivered-orders")}
+              className="rounded-xl border border-border bg-background p-4 text-left transition hover:border-primary/40 hover:shadow-sm"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Delivered Orders</p>
+                <PackageCheck className="h-4 w-4 text-emerald-600" />
+              </div>
+              <p className="mt-1 text-xl font-semibold text-foreground">{deliveredOrders.length}</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection("cancelled-orders")}
+              className="rounded-xl border border-border bg-background p-4 text-left transition hover:border-primary/40 hover:shadow-sm"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Cancelled Orders</p>
+                <XCircle className="h-4 w-4 text-rose-600" />
+              </div>
+              <p className="mt-1 text-xl font-semibold text-foreground">{cancelledOrders.length}</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection("accepted-orders")}
+              className="rounded-xl border border-border bg-background p-4 text-left transition hover:border-primary/40 hover:shadow-sm"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Ongoing Orders</p>
+                <Truck className="h-4 w-4 text-indigo-600" />
+              </div>
+              <p className="mt-1 text-xl font-semibold text-foreground">{ongoingOrders.length}</p>
+            </button>
+          </div>
         </section>
 
         {error && (
@@ -339,7 +791,7 @@ export default function AdminPage() {
         )}
 
         <section className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-lg border border-border bg-card p-6">
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
             <h2 className="text-xl font-semibold text-foreground">
               {editingProductId ? `Edit Product #${editingProductId}` : "Add Product"}
             </h2>
@@ -478,7 +930,7 @@ export default function AdminPage() {
             </form>
           </div>
 
-          <div className="rounded-lg border border-border bg-card p-6">
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold text-foreground">Products</h2>
               <Button disabled={loading} onClick={() => void loadData()} type="button" variant="outline">
@@ -532,77 +984,77 @@ export default function AdminPage() {
           </div>
         </section>
 
-        <section className="rounded-lg border border-border bg-card p-6">
-          <h2 className="text-xl font-semibold text-foreground">Customer Orders</h2>
+        <section id="accepted-orders" className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <h2 className="text-xl font-semibold text-foreground">Accepted Orders</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            View who ordered each item and update order status.
+            Payment approved orders with delivery tracking status.
           </p>
           <div className="mt-4 space-y-4">
             {loading ? (
               <p className="text-sm text-muted-foreground">Loading orders...</p>
-            ) : orders.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No orders found.</p>
+            ) : filteredAcceptedOrders.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No accepted orders.</p>
             ) : (
-              orders.map((order) => (
+              filteredAcceptedOrders.map((order) => renderOrderCard(order, { allowReview: false, allowTracking: true }))
+            )}
+          </div>
+        </section>
+
+        <section id="ongoing-orders" className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <h2 className="text-xl font-semibold text-foreground">Ongoing Orders</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Accepted orders that are still in progress (not delivered yet).
+          </p>
+          <div className="mt-4 space-y-4">
+            {loading ? (
+              <p className="text-sm text-muted-foreground">Loading orders...</p>
+            ) : filteredOngoingOrders.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No ongoing orders.</p>
+            ) : (
+              filteredOngoingOrders.map((order) => renderOrderCard(order, { allowReview: false, allowTracking: true }))
+            )}
+          </div>
+        </section>
+
+        <section id="delivered-orders" className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <h2 className="text-xl font-semibold text-foreground">Delivered Orders</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Delivered orders with customer product reviews.
+          </p>
+          <div className="mt-4 space-y-4">
+            {loading ? (
+              <p className="text-sm text-muted-foreground">Loading orders...</p>
+            ) : filteredDeliveredOrders.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No delivered orders.</p>
+            ) : (
+              filteredDeliveredOrders.map((order) => (
                 <article className="rounded-lg border border-border p-4" key={order.id}>
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="font-medium text-foreground">
-                        Order #{order.id} | {formatPaise(order.totalPaise)}
+                        Order #{order.orderNumber || order.id} | {formatPaise(order.totalPaise)}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {new Date(order.createdAt).toLocaleString()}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        className="w-40"
-                        onChange={(event) =>
-                          setOrderStatusDraft((prev) => ({
-                            ...prev,
-                            [order.id]: event.target.value,
-                          }))
-                        }
-                        placeholder={order.status}
-                        value={orderStatusDraft[order.id] ?? order.status}
-                      />
-                      <Button
-                        onClick={() => void updateOrderStatus(order.id)}
-                        size="sm"
-                        type="button"
-                        variant="outline"
-                      >
-                        Update
-                      </Button>
-                    </div>
+                    <p className="text-sm text-muted-foreground">Status: delivered</p>
                   </div>
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-md border border-border p-3 text-sm">
-                      <p className="font-medium text-foreground">Customer</p>
-                      <p>{order.customerName}</p>
-                      <p>{order.customerEmail}</p>
-                      <p>{order.customerPhone}</p>
-                      {order.user && (
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Account: {order.user.name || "User"} ({order.user.email})
-                        </p>
-                      )}
-                    </div>
-                    <div className="rounded-md border border-border p-3 text-sm">
-                      <p className="font-medium text-foreground">Delivery Address</p>
-                      <p>{order.addressLine1}</p>
-                      {order.addressLine2 && <p>{order.addressLine2}</p>}
-                      <p>
-                        {order.city}, {order.state} {order.postalCode}
-                      </p>
-                    </div>
-                  </div>
+
                   <div className="mt-3 rounded-md border border-border p-3">
-                    <p className="font-medium text-foreground">Items Ordered</p>
-                    <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                    <p className="font-medium text-foreground">Customer Reviews</p>
+                    <ul className="mt-2 space-y-2 text-sm">
                       {order.items.map((item) => (
-                        <li key={item.id}>
-                          {item.name} | Qty {item.quantity} | {formatPaise(item.pricePaise)}
+                        <li key={item.id} className="rounded-md border border-border p-2">
+                          <p className="font-medium text-foreground">{item.name}</p>
+                          {typeof item.reviewRating === "number" && item.reviewComment ? (
+                            <>
+                              <p className="text-muted-foreground">Rating: {item.reviewRating}/5</p>
+                              <p className="text-muted-foreground">Review: {item.reviewComment}</p>
+                            </>
+                          ) : (
+                            <p className="text-muted-foreground">No review submitted yet.</p>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -612,8 +1064,50 @@ export default function AdminPage() {
             )}
           </div>
         </section>
+
+        <section id="cancelled-orders" className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <h2 className="text-xl font-semibold text-foreground">Cancelled Orders</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Orders cancelled due to rejected payment.
+          </p>
+          <div className="mt-4 space-y-4">
+            {loading ? (
+              <p className="text-sm text-muted-foreground">Loading orders...</p>
+            ) : filteredCancelledOrders.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No cancelled orders.</p>
+            ) : (
+              filteredCancelledOrders.map((order) => renderOrderCard(order, { allowReview: false, allowTracking: false }))
+            )}
+          </div>
+        </section>
+
+        <section id="pending-orders" className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <h2 className="text-xl font-semibold text-foreground">Pending Payment Review</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Approve or reject payments submitted by customers.
+          </p>
+          <div className="mt-4 space-y-4">
+            {loading ? (
+              <p className="text-sm text-muted-foreground">Loading orders...</p>
+            ) : filteredPendingOrders.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No pending orders.</p>
+            ) : (
+              filteredPendingOrders.map((order) => renderOrderCard(order, { allowReview: true, allowTracking: false }))
+            )}
+          </div>
+        </section>
+
       </main>
       <Footer />
+      {showScrollTop && (
+        <Button
+          type="button"
+          onClick={scrollToTop}
+          className="fixed bottom-6 right-6 z-50 shadow-lg"
+        >
+          Scroll to top
+        </Button>
+      )}
     </div>
   )
 }

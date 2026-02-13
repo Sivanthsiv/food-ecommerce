@@ -7,6 +7,24 @@ import { requireAdminSession } from "@/lib/admin-auth"
 const MAX_FILE_SIZE = 5 * 1024 * 1024
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"])
 
+const MAGIC_BYTES: Record<string, number[]> = {
+  "image/jpeg": [0xff, 0xd8, 0xff],
+  "image/png": [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+  "image/webp": [0x52, 0x49, 0x46, 0x46],
+  "image/gif": [0x47, 0x49, 0x46, 0x38],
+}
+
+function validateMagicBytes(buf: ArrayBuffer, mime: string) {
+  const expected = MAGIC_BYTES[mime]
+  if (!expected) return false
+  const bytes = new Uint8Array(buf)
+  if (bytes.length < expected.length) return false
+  for (let i = 0; i < expected.length; i++) {
+    if (bytes[i] !== expected[i]) return false
+  }
+  return true
+}
+
 function getExtension(type: string) {
   switch (type) {
     case "image/jpeg":
@@ -44,6 +62,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "File too large (max 5MB)" }, { status: 400 })
     }
 
+    const bytes = await file.arrayBuffer()
+    if (!validateMagicBytes(bytes, file.type)) {
+      return NextResponse.json({ error: "Uploaded file failed validation" }, { status: 400 })
+    }
+
     const ext = getExtension(file.type)
     const filename = `${Date.now()}-${randomUUID()}.${ext}`
     const relativePath = `/uploads/${filename}`
@@ -55,7 +78,8 @@ export async function POST(req: Request) {
     await writeFile(targetPath, Buffer.from(bytes))
 
     return NextResponse.json({ imageUrl: relativePath })
-  } catch {
+  } catch (err) {
+    console.error("admin/upload POST error:", err)
     return NextResponse.json({ error: "Unable to upload image" }, { status: 500 })
   }
 }

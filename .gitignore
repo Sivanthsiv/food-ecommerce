@@ -25,3 +25,18 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# Logs
+*.log
+logs/
+dev-server.log
+port3000.log
+
+# Uploads
+uploads/
+public/uploads/
+
+# Node
+node_modules/
+
+# Environment
+.env

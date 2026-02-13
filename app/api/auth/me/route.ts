@@ -12,7 +12,17 @@ export async function GET() {
   try {
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
-      select: { id: true, email: true, name: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        addressLine1: true,
+        addressLine2: true,
+        city: true,
+        state: true,
+        postalCode: true,
+      },
     })
 
     if (!user && isAdminEmail(payload.email)) {
@@ -37,6 +47,7 @@ export async function GET() {
       },
     })
   } catch {
+    console.error("auth/me GET error:")
     if (isAdminEmail(payload.email)) {
       return NextResponse.json({
         user: {

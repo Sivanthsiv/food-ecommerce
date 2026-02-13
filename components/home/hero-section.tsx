@@ -57,6 +57,7 @@ export function HeroSection() {
           src="/hero-food.jpg"
           alt="Homemade vegetarian ready-to-eat and instant products"
           fill
+          sizes="50vw"
           className="aspect-[3/2] object-cover lg:aspect-auto lg:h-full lg:w-full"
           priority
         />

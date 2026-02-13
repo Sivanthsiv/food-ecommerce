@@ -24,6 +24,11 @@ export async function PUT(
   if (auth) return auth
 
   const { id } = await params
+  // Basic ObjectId validation to avoid accidental DB errors and leakage
+  const objectIdPattern = /^[a-fA-F0-9]{24}$/
+  if (!objectIdPattern.test(id)) {
+    return NextResponse.json({ error: "Invalid id" }, { status: 400 })
+  }
 
   try {
     const body = await req.json()
@@ -37,12 +42,10 @@ export async function PUT(
       data: parsed.data,
     })
     return NextResponse.json({ product })
-  } catch {
+  } catch (err) {
+    console.error("admin/products/[id] PUT error:", err)
     return NextResponse.json(
-      {
-        error:
-          "Unable to update product. Check DATABASE_URL and ensure the database is running.",
-      },
+      { error: "Unable to update product. Please try again later." },
       { status: 503 },
     )
   }
@@ -56,17 +59,17 @@ export async function DELETE(
   if (auth) return auth
 
   const { id } = await params
+  // Basic ObjectId validation
+  const objectIdPattern = /^[a-fA-F0-9]{24}$/
+  if (!objectIdPattern.test(id)) {
+    return NextResponse.json({ error: "Invalid id" }, { status: 400 })
+  }
 
   try {
     await prisma.product.delete({ where: { id } })
     return NextResponse.json({ ok: true })
-  } catch {
-    return NextResponse.json(
-      {
-        error:
-          "Unable to delete product. Check DATABASE_URL and ensure the database is running.",
-      },
-      { status: 503 },
-    )
+  } catch (err) {
+    console.error("admin/products/[id] DELETE error:", err)
+    return NextResponse.json({ error: "Unable to delete product" }, { status: 503 })
   }
 }

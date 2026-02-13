@@ -6,6 +6,8 @@ const TOKEN_NAME = "ek_token"
 export type AuthPayload = {
   userId: string
   email: string
+  name?: string | null
+  isAdmin?: boolean
 }
 
 export function signAuthToken(payload: AuthPayload) {

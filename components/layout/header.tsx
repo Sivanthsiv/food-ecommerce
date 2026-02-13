@@ -4,7 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Menu, X, ShoppingCart, Search, User } from "lucide-react"
+import { Menu, ShoppingCart, Search, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useCart } from "@/lib/cart-context"
@@ -25,29 +25,55 @@ const navigation = [
   { name: "Contact", href: "/contact" },
 ]
 
+type AuthUser = {
+  id: string
+  email: string
+  name?: string | null
+  isAdmin?: boolean
+}
+
+const AUTH_CACHE_KEY = "ek_auth_user_v1"
+const AUTH_CACHE_TTL_MS = 5 * 60 * 1000
+
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { totalItems, setIsCartOpen } = useCart()
   const router = useRouter()
-  const [authUser, setAuthUser] = useState<{
-    id: string
-    email: string
-    name?: string | null
-    isAdmin?: boolean
-  } | null>(null)
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
 
   useEffect(() => {
     let active = true
+
+    try {
+      const raw = sessionStorage.getItem(AUTH_CACHE_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw) as { user: AuthUser | null; timestamp: number }
+        if (Date.now() - parsed.timestamp < AUTH_CACHE_TTL_MS) {
+          setAuthUser(parsed.user ?? null)
+          setAuthLoading(false)
+        }
+      }
+    } catch {
+      // Ignore malformed client cache.
+    }
+
     const loadUser = async () => {
       try {
         const res = await fetch("/api/auth/me", {
-          cache: "no-store",
           credentials: "include",
         })
         const data = await res.json()
         if (!active) return
         setAuthUser(data?.user ?? null)
+        try {
+          sessionStorage.setItem(
+            AUTH_CACHE_KEY,
+            JSON.stringify({ user: data?.user ?? null, timestamp: Date.now() }),
+          )
+        } catch {
+          // Ignore client storage failures.
+        }
       } catch {
         if (!active) return
         setAuthUser(null)
@@ -56,7 +82,9 @@ export function Header() {
         setAuthLoading(false)
       }
     }
+
     loadUser()
+
     return () => {
       active = false
     }
@@ -71,6 +99,12 @@ export function Header() {
       await fetch("/api/auth/logout", { method: "POST", credentials: "include" })
     } finally {
       setAuthUser(null)
+      try {
+        sessionStorage.removeItem(AUTH_CACHE_KEY)
+      } catch {
+        // Ignore client storage failures.
+      }
+      router.replace("/login")
       router.refresh()
     }
   }

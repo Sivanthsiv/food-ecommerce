@@ -1,11 +1,17 @@
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { Header } from "@/components/layout/header"
 import { Footer } from "@/components/layout/footer"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, Package, ArrowRight } from "lucide-react"
 
-export default function OrderSuccessPage() {
-  const orderNumber = `FB${Date.now().toString().slice(-8)}`
+export default async function OrderSuccessPage({ searchParams }: { searchParams: Promise<{ orderId?: string }> }) {
+  const { orderId } = await searchParams
+  if (!orderId) {
+    // Redirect to home when orderId is missing to avoid showing fake values
+    redirect("/")
+  }
+  const orderNumber = orderId
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -20,7 +26,7 @@ export default function OrderSuccessPage() {
             Order Placed Successfully!
           </h1>
           <p className="text-muted-foreground mb-6">
-            Thank you for your order. We will send you a confirmation email shortly.
+            Thank you for your order. Your payment proof has been submitted for admin verification.
           </p>
 
           <div className="bg-card rounded-lg border border-border p-6 mb-8">
@@ -30,11 +36,16 @@ export default function OrderSuccessPage() {
             </div>
             <p className="text-2xl font-bold text-foreground">{orderNumber}</p>
             <p className="text-sm text-muted-foreground mt-4">
-              Estimated delivery: 3-5 business days
+              We will confirm your order after payment approval.
             </p>
           </div>
 
           <div className="space-y-3">
+            <Button asChild size="lg" className="w-full">
+              <Link href={`/track-order?orderId=${encodeURIComponent(orderNumber)}`}>
+                Track This Order
+              </Link>
+            </Button>
             <Button asChild size="lg" className="w-full">
               <Link href="/shop">
                 Continue Shopping

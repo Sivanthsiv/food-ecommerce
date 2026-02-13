@@ -23,12 +23,10 @@ export async function GET(req: Request) {
   try {
     const products = await prisma.product.findMany({ orderBy: { createdAt: "asc" } })
     return NextResponse.json({ products })
-  } catch {
+  } catch (error) {
+    console.error("admin/products GET error:", error)
     return NextResponse.json(
-      {
-        error:
-          "Unable to load products. Check DATABASE_URL and ensure the database is running.",
-      },
+      { error: "Unable to load products; please try again later." },
       { status: 503 },
     )
   }
@@ -47,12 +45,10 @@ export async function POST(req: Request) {
 
     const product = await prisma.product.create({ data: parsed.data })
     return NextResponse.json({ product })
-  } catch {
+  } catch (error) {
+    console.error("admin/products POST error:", error)
     return NextResponse.json(
-      {
-        error:
-          "Unable to create product. Check DATABASE_URL and ensure the database is running.",
-      },
+      { error: "Unable to create product. Please try again later." },
       { status: 503 },
     )
   }

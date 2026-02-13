@@ -26,7 +26,15 @@ export default function LoginPage() {
       })
       if (!res.ok) {
         const data = await res.json().catch(() => null)
-        throw new Error(data?.error || "Login failed")
+        // Prefer `error` returned by the API. Only include a shortened/sanitized
+        // `details` string when `error` is present to avoid exposing raw internals.
+        let message = "Login failed"
+        if (data?.error) {
+          const rawDetails = typeof data.details === "string" ? data.details.replace(/\s+/g, " ") : ""
+          const safeDetails = rawDetails ? `: ${rawDetails.slice(0, 200)}` : ""
+          message = `${data.error}${safeDetails}`
+        }
+        throw new Error(message)
       }
       const data = await res.json().catch(() => null)
       const nextPath = data?.user?.isAdmin ? "/admin" : "/account"
