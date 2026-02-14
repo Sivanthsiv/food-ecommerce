@@ -1,21 +1,33 @@
 import mongoose from "mongoose"
 
+function normalizeEnvValue(value: string | undefined) {
+  if (!value) return ""
+  const trimmed = value.trim()
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1).trim()
+  }
+  return trimmed
+}
+
 function isMongoConnectionString(value: string) {
   return value.startsWith("mongodb://") || value.startsWith("mongodb+srv://")
 }
 
 function resolveMongoUri() {
-  const rawMongoUri = process.env.MONGO_URI
-  const fallbackDatabaseUrl = process.env.DATABASE_URL
-  const rawUri = rawMongoUri ?? fallbackDatabaseUrl
+  const rawMongoUri = normalizeEnvValue(process.env.MONGO_URI)
+  const fallbackDatabaseUrl = normalizeEnvValue(process.env.DATABASE_URL)
+  const rawUri = rawMongoUri || fallbackDatabaseUrl
   if (!rawUri) return null
 
   if (!isMongoConnectionString(rawUri)) {
     return null
   }
 
-  const dbPassword = process.env.MONGO_DB_PASSWORD
-  const dbUser = process.env.MONGO_DB_USER
+  const dbPassword = normalizeEnvValue(process.env.MONGO_DB_PASSWORD)
+  const dbUser = normalizeEnvValue(process.env.MONGO_DB_USER)
 
   let resolved = rawUri
   if (dbPassword) {
