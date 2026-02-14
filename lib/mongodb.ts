@@ -1,8 +1,18 @@
 import mongoose from "mongoose"
 
+function isMongoConnectionString(value: string) {
+  return value.startsWith("mongodb://") || value.startsWith("mongodb+srv://")
+}
+
 function resolveMongoUri() {
-  const rawUri = process.env.MONGO_URI ?? process.env.DATABASE_URL
+  const rawMongoUri = process.env.MONGO_URI
+  const fallbackDatabaseUrl = process.env.DATABASE_URL
+  const rawUri = rawMongoUri ?? fallbackDatabaseUrl
   if (!rawUri) return null
+
+  if (!isMongoConnectionString(rawUri)) {
+    return null
+  }
 
   const dbPassword = process.env.MONGO_DB_PASSWORD
   const dbUser = process.env.MONGO_DB_USER
@@ -35,10 +45,9 @@ export async function connectDB() {
   const mongoUri = resolveMongoUri()
 
   if (!mongoUri) {
-    const missingVars: string[] = []
-    if (!process.env.MONGO_URI) missingVars.push("MONGO_URI")
-    if (!process.env.DATABASE_URL) missingVars.push("DATABASE_URL")
-    throw new Error(`Missing environment variable(s): ${missingVars.join(", ")}. Add them to your .env file.`)
+    throw new Error(
+      "MongoDB URI is missing or invalid. Set MONGO_URI to a mongodb:// or mongodb+srv:// connection string.",
+    )
   }
 
   if (mongoUri.includes("<") || mongoUri.includes(">")) {
