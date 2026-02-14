@@ -127,138 +127,6 @@ export function Header() {
           </Link>
         </div>
 
-        {/* Mobile menu button */}
-        <div className="flex lg:hidden">
-          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="-m-2.5">
-                <span className="sr-only">Open main menu</span>
-                <Menu className="h-6 w-6" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-full max-w-xs bg-background">
-              <div className="flex items-center justify-between mb-8">
-                <Link
-                  href="/"
-                  className="-m-1.5 p-1.5 flex items-center gap-3"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <Image
-                    src="/easy-kitchen-logo.jpg"
-                    alt="EasyKitchen"
-                    width={160}
-                    height={48}
-                    className="h-10 w-auto"
-                  />
-                  <span className="font-serif text-2xl font-semibold text-primary">EasyKitchen</span>
-                </Link>
-              </div>
-              <div className="flow-root">
-                <div className="-my-6 divide-y divide-border">
-                  <div className="space-y-2 py-6">
-                    {navigation.map((item) => (
-                      <Link
-                        key={item.name}
-                        href={item.href}
-                        className="-mx-3 block rounded-lg px-3 py-2 text-base font-medium text-foreground hover:bg-secondary transition-colors"
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        {item.name}
-                      </Link>
-                    ))}
-                  </div>
-                  <div className="py-6">
-                    <Link
-                      href="/faq"
-                      className="-mx-3 block rounded-lg px-3 py-2.5 text-base font-medium text-foreground hover:bg-secondary transition-colors"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      FAQs
-                    </Link>
-                    <Link
-                      href="/certifications"
-                      className="-mx-3 block rounded-lg px-3 py-2.5 text-base font-medium text-foreground hover:bg-secondary transition-colors"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Certifications
-                    </Link>
-                  </div>
-                  <div className="py-6">
-                    <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                      Account
-                    </p>
-                    {authLoading ? (
-                      <span className="-mx-3 block rounded-lg px-3 py-2 text-base font-medium text-muted-foreground">
-                        Loading...
-                      </span>
-                    ) : authUser ? (
-                      <>
-                        <Link
-                          href="/account/profile"
-                          className="-mx-3 block rounded-lg px-3 py-2 text-base font-medium text-foreground hover:bg-secondary transition-colors"
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          My Profile
-                        </Link>
-                        <Link
-                          href="/account/addresses"
-                          className="-mx-3 block rounded-lg px-3 py-2 text-base font-medium text-foreground hover:bg-secondary transition-colors"
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          Saved Addresses
-                        </Link>
-                        <Link
-                          href="/account/orders"
-                          className="-mx-3 block rounded-lg px-3 py-2 text-base font-medium text-foreground hover:bg-secondary transition-colors"
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          Order History
-                        </Link>
-                        {authUser.isAdmin && (
-                          <Link
-                            href="/admin"
-                            className="-mx-3 block rounded-lg px-3 py-2 text-base font-medium text-foreground hover:bg-secondary transition-colors"
-                            onClick={() => setMobileMenuOpen(false)}
-                          >
-                            Admin Dashboard
-                          </Link>
-                        )}
-                        <button
-                          type="button"
-                          className="-mx-3 block w-full rounded-lg px-3 py-2 text-left text-base font-medium text-foreground hover:bg-secondary transition-colors"
-                          onClick={() => {
-                            setMobileMenuOpen(false)
-                            handleLogout()
-                          }}
-                        >
-                          Log out
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <Link
-                          href="/login"
-                          className="-mx-3 block rounded-lg px-3 py-2 text-base font-medium text-foreground hover:bg-secondary transition-colors"
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          Log in
-                        </Link>
-                        <Link
-                          href="/signup"
-                          className="-mx-3 block rounded-lg px-3 py-2 text-base font-medium text-foreground hover:bg-secondary transition-colors"
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          Sign up
-                        </Link>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
-
         {/* Desktop navigation */}
         <div className="hidden lg:flex lg:gap-x-8">
           {navigation.map((item) => (
@@ -293,6 +161,137 @@ export function Header() {
             )}
             <span className="sr-only">Cart</span>
           </Button>
+
+          <div className="flex lg:hidden">
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="-m-2.5">
+                  <span className="sr-only">Open main menu</span>
+                  <Menu className="h-6 w-6" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-full max-w-xs bg-background">
+                <div className="flex items-center justify-between mb-8">
+                  <Link
+                    href="/"
+                    className="-m-1.5 p-1.5 flex items-center gap-3"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Image
+                      src="/easy-kitchen-logo.jpg"
+                      alt="EasyKitchen"
+                      width={160}
+                      height={48}
+                      className="h-10 w-auto"
+                    />
+                    <span className="font-serif text-2xl font-semibold text-primary">EasyKitchen</span>
+                  </Link>
+                </div>
+                <div className="flow-root">
+                  <div className="-my-6 divide-y divide-border">
+                    <div className="space-y-2 py-6">
+                      {navigation.map((item) => (
+                        <Link
+                          key={item.name}
+                          href={item.href}
+                          className="-mx-3 block rounded-lg px-3 py-2 text-base font-medium text-foreground hover:bg-secondary transition-colors"
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          {item.name}
+                        </Link>
+                      ))}
+                    </div>
+                    <div className="py-6">
+                      <Link
+                        href="/faq"
+                        className="-mx-3 block rounded-lg px-3 py-2.5 text-base font-medium text-foreground hover:bg-secondary transition-colors"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        FAQs
+                      </Link>
+                      <Link
+                        href="/certifications"
+                        className="-mx-3 block rounded-lg px-3 py-2.5 text-base font-medium text-foreground hover:bg-secondary transition-colors"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Certifications
+                      </Link>
+                    </div>
+                    <div className="py-6">
+                      <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                        Account
+                      </p>
+                      {authLoading ? (
+                        <span className="-mx-3 block rounded-lg px-3 py-2 text-base font-medium text-muted-foreground">
+                          Loading...
+                        </span>
+                      ) : authUser ? (
+                        <>
+                          <Link
+                            href="/account/profile"
+                            className="-mx-3 block rounded-lg px-3 py-2 text-base font-medium text-foreground hover:bg-secondary transition-colors"
+                            onClick={() => setMobileMenuOpen(false)}
+                          >
+                            My Profile
+                          </Link>
+                          <Link
+                            href="/account/addresses"
+                            className="-mx-3 block rounded-lg px-3 py-2 text-base font-medium text-foreground hover:bg-secondary transition-colors"
+                            onClick={() => setMobileMenuOpen(false)}
+                          >
+                            Saved Addresses
+                          </Link>
+                          <Link
+                            href="/account/orders"
+                            className="-mx-3 block rounded-lg px-3 py-2 text-base font-medium text-foreground hover:bg-secondary transition-colors"
+                            onClick={() => setMobileMenuOpen(false)}
+                          >
+                            Order History
+                          </Link>
+                          {authUser.isAdmin && (
+                            <Link
+                              href="/admin"
+                              className="-mx-3 block rounded-lg px-3 py-2 text-base font-medium text-foreground hover:bg-secondary transition-colors"
+                              onClick={() => setMobileMenuOpen(false)}
+                            >
+                              Admin Dashboard
+                            </Link>
+                          )}
+                          <button
+                            type="button"
+                            className="-mx-3 block w-full rounded-lg px-3 py-2 text-left text-base font-medium text-foreground hover:bg-secondary transition-colors"
+                            onClick={() => {
+                              setMobileMenuOpen(false)
+                              handleLogout()
+                            }}
+                          >
+                            Log out
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <Link
+                            href="/login"
+                            className="-mx-3 block rounded-lg px-3 py-2 text-base font-medium text-foreground hover:bg-secondary transition-colors"
+                            onClick={() => setMobileMenuOpen(false)}
+                          >
+                            Log in
+                          </Link>
+                          <Link
+                            href="/signup"
+                            className="-mx-3 block rounded-lg px-3 py-2 text-base font-medium text-foreground hover:bg-secondary transition-colors"
+                            onClick={() => setMobileMenuOpen(false)}
+                          >
+                            Sign up
+                          </Link>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
